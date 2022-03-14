@@ -11,15 +11,21 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  email        String        @unique
-  password     String
-  transactions Transaction[]
+  id              Int           @id @default(autoincrement())
+  email           String        @unique
+  password        String
+  fullName        String
+  amountInAccount Int
+  transactions    Transaction[]
 }
 
 model Transaction {
-  id      Int  @id @default(autoincrement())
-  amount  Int
-  usersId Int
-  users   User @relation(fields: [usersId], references: [id], onDelete: Cascade)
+  id               Int     @id @default(autoincrement())
+  amount           Int
+  currency         String
+  receiverOrSender String
+  completedAt      String
+  isPositive       Boolean
+  usersId          Int
+  users            User    @relation(fields: [usersId], references: [id], onDelete: Cascade)
 }

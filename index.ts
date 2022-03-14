@@ -31,15 +31,12 @@ async function getUserFromToken(token: string) {
 
 
 app.post('/register', async (req, res) => {
-    const { email, password } = req.body
+    const { email, password, fullName, amountInAccount } = req.body
 
     try {
-        // generate a hash from their password
         const hash = bcrypt.hashSync(password, 8)
         const user = await prisma.user.create({
-            // store the hash instead of their password
-            // NEVER STORE THE ACTUAL PASSWORD
-            data: { email: email, password: hash }
+            data: { email: email, fullName: fullName, amountInAccount, password: hash }
         })
         res.send({ user, token: createToken(user.id) })
     } catch (err) {
@@ -57,7 +54,6 @@ app.post('/sign-in', async (req, res) => {
         const passwordMatches = bcrypt.compareSync(password, user.password)
 
         if (user && passwordMatches) {
-            // at this point we know that: the email and password are both valid
             res.send({ user, token: createToken(user.id) })
         } else {
             throw Error('BOOM!')
@@ -67,7 +63,7 @@ app.post('/sign-in', async (req, res) => {
     }
 })
 
-app.post('/validate', async (req, res) => {
+app.post('/banking-info', async (req, res) => {
     const { token } = req.body
 
     try {
