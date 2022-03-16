@@ -10,14 +10,15 @@ import 'dotenv/config'
 const prisma = new PrismaClient({ log: ['query', 'info', 'warn', 'error'] })
 
 const app = express()
-
 app.use(cors())
 app.use(express.json())
+
+const PORT = process.env.PORT || 4000
 
 
 function createToken(id: number) {
     // @ts-ignore
-    return jwt.sign({ id: id }, process.env.MY_SECRET, { expiresIn: '2 hours' })
+    return jwt.sign({ id: id }, process.env.MY_SECRET, { expiresIn: '2hours' })
 }
 
 async function getUserFromToken(token: string) {
@@ -29,14 +30,19 @@ async function getUserFromToken(token: string) {
     return user
 }
 
+function randomAmount() {
+    return Math.floor(Math.random());
+}
 
-app.post('/register', async (req, res) => {
-    const { email, password, fullName, amountInAccount } = req.body
+
+app.post('/signup', async (req, res) => {
+    const { email, password, fullName } = req.body
 
     try {
         const hash = bcrypt.hashSync(password, 8)
         const user = await prisma.user.create({
-            data: { email: email, fullName: fullName, amountInAccount, password: hash }
+            data: { email: email, fullName: fullName, password: hash, amountInAccount: randomAmount() },
+            include: { transactions: true }
         })
         res.send({ user, token: createToken(user.id) })
     } catch (err) {
@@ -45,25 +51,29 @@ app.post('/register', async (req, res) => {
     }
 })
 
-app.post('/login', async (req, res) => {
+app.post('/sign-in', async (req, res) => {
     const { email, password } = req.body
-
     try {
-        const user = await prisma.user.findUnique({ where: { email: email } })
-        // @ts-ignore
-        const passwordMatches = bcrypt.compareSync(password, user.password)
+        const user = await prisma.user.findUnique({ where: { email }, include: { transactions: true } })
+        //@ts-ignore
+        const passwordMatches = bcryptjs.compareSync(password, user.password)
 
-        if (user && passwordMatches) {
+        if (passwordMatches) {
+            //@ts-ignore
             res.send({ user, token: createToken(user.id) })
         } else {
-            throw Error('BOOM!')
+            throw Error('Password not found')
         }
-    } catch (err) {
-        res.status(400).send({ error: 'User/password invalid.' })
+
     }
+    catch (err) {
+        res.status(400).send({ error: 'User/password invalid' })
+    }
+
 })
 
-app.post('/banking-info', async (req, res) => {
+
+app.post('/validate', async (req, res) => {
     const { token } = req.body
 
     try {
@@ -75,8 +85,23 @@ app.post('/banking-info', async (req, res) => {
     }
 })
 
+app.post('/banking-info', async (req, res) => {
+    const { token } = req.body
+    try {
+        //@ts-ignore
+        const decoded = jwt.verify(token, process.env.MY_SECRET)
+        //@ts-ignore
+        const user = await prisma.user.findUnique({ where: { id: decoded.id }, include: { transactions: true } })
+        res.send(user)
+    }
+    catch (err) {
+        //@ts-ignore
+        res.send({ error: err.message })
+    }
+})
 
 
-app.listen(4000, () => {
+
+app.listen(PORT, () => {
     console.log('server running: http://localhost:4000')
 })
